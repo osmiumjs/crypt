@@ -1,0 +1,12 @@
+{
+	"name"        : "osmium-crypt",
+	"description" : "Osmium Crypt tools",
+	"license"     : "MIT",
+	"author"      : "Vasiliy Isaichkin <vasiliy@isaichkin.ru>",
+	"repository"  : "https://github.com/VasiliyIsaichkin/osmium-crypt",
+	"version"     : "0.1.0",
+	"dependencies": {
+		"notepack.io": "^2.1.2",
+		"crc"        : "^3.5.0"
+	}
+}
