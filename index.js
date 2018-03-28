@@ -236,21 +236,25 @@ class Crypt {
 			const userDataRaw = packet.slice(2 + info.length + 4, 2 + info.length + 4 + userDataLen);
 			userData = useMsgpack ? msgpack.decode(userDataRaw) : JSON.stringify(userDataRaw.toString());
 		}
-		const data = packet.slice(2 + info.length + 4 + userDataLen);
+		const payload = packet.slice(2 + info.length + (hasUserData ? 4 : 0) + userDataLen);
 
-		return {data, id, userData, useSerializer};
+		return {payload, id, userData, useSerializer};
 	}
 
-	async decrypt(key, payload, returnExtended = false) {
-		if (!Buffer.isBuffer(payload)) return null;
-		let decrypted, id, userData;
+	async decrypt(key, data, returnExtended = false) {
+		if (!Buffer.isBuffer(data)) return null;
+		let payload, id, userData;
+
 		try {
-			const packet = this.parsePacket(payload);
+			const packet = this.parsePacket(data);
+			key = typeof key === 'function' ? await key(packet) : key;
+
 			const decipher = crypto.createDecipher(this.options.cryptMode, this.genKey(key, packet.id));
-			decrypted = await this._process(decipher, packet.data);
+			payload = await this._process(decipher, packet.payload);
+
 			id = packet.id;
 			userData = packet.userData;
-			payload = (packet.useSerializer) ? await this.serializer.deserialize(decrypted) : decrypted;
+			payload = (packet.useSerializer) ? await this.serializer.deserialize(payload) : payload;
 		} catch (e) {
 			return null;
 		}
