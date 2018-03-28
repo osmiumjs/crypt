@@ -3,12 +3,39 @@ const msgpack = require('notepack.io');
 const crc32 = require('crc').crc32;
 const zlib = require('zlib');
 
-const cryptTools = {
-	crypto: crypto,
-	hash  : (what, mode = 'sha256', encoding = 'utf8', digest = 'hex') =>
+function makeWBuffer(int, name, length) {
+	const buf = Buffer.alloc(length);
+	buf[name](int);
+	return buf;
+}
+
+const tools = {
+	crypto     : crypto,
+	hash       : (what, mode = 'sha256', encoding = 'utf8', digest = 'hex') =>
 		crypto.createHash(mode).update(what, encoding).digest(digest),
-	isHash: (what, type = 'sha256') =>
-		(new RegExp(`[0-9a-f]{${cryptTools.hash('', type).length}}`, 'i')).test(what)
+	isHash     : (what, type = 'sha256') =>
+		(new RegExp(`[0-9a-f]{${tools.hash('', type).length}}`, 'i')).test(what),
+	int8ToBuf  : (int) => makeWBuffer(int, 'writeInt8', 1),
+	int8UToBuf : (int) => makeWBuffer(int, 'writeUInt8', 1),
+	int16ToBuf : (int, be) => makeWBuffer(int, `writeInt16${be ? 'BE' : 'LE'}`, 2),
+	int16UToBuf: (int, be) => makeWBuffer(int, `writeUInt16${be ? 'BE' : 'LE'}`, 2),
+	int32ToBuf : (int, be) => makeWBuffer(int, `writeInt32${be ? 'BE' : 'LE'}`, 4),
+	int32UToBuf: (int, be) => makeWBuffer(int, `writeUInt32${be ? 'BE' : 'LE'}`, 4),
+	intToBuf   : (int, len = 7, be) => {
+		const buf = Buffer.alloc(len);
+		buf[`writeInt${be ? 'BE' : 'LE'}`](int, 0, len);
+		return buf;
+	},
+	bufToInt8  : (buf) => buf.readInt8(),
+	bufToInt8U : (buf) => buf.readUInt8(),
+	bufToInt16 : (buf, be) => buf[`readInt16${be ? 'BE' : 'LE'}`](),
+	bufToInt16U: (buf, be) => buf[`readUInt16${be ? 'BE' : 'LE'}`](),
+	bufToInt32 : (buf, be) => buf[`readInt32${be ? 'BE' : 'LE'}`](),
+	bufToInt32U: (buf, be) => buf[`readUInt32${be ? 'BE' : 'LE'}`](),
+	bufToInt   : (buf, len = 7, be) => buf[`readInt${be ? 'BE' : 'LE'}`](0, len),
+	pad        : (str, z = 8) => str.length < z ? tools.pad('0' + str, z) : str,
+	bufTobinStr: (buf) => tools.pad(tools.bufToInt8U(buf).toString(2)),
+	binStrToBuf: (str) => tools.int8UToBuf(parseInt(str, 2))
 };
 
 class Serializer {
@@ -21,8 +48,8 @@ class Serializer {
 		}, options);
 
 		Object.assign(this.options, {
-			serializeVersion: 1,
-			headerMinLength : 4
+			version        : 1,
+			headerMinLength: 4
 		});
 	}
 
@@ -34,46 +61,63 @@ class Serializer {
 		return new Promise((resolve => zlib.inflate(data, (err, data) => resolve(data))));
 	}
 
+	constructHeader(flags, crc32) {
+		if (flags.length > 6) return false;
+		flags = Object.assign(Array(6).fill(0), flags);
+		flags = flags.concat([crc32 === false ? 0 : 1, 0]);
+		const crc32buf = crc32 !== false ? tools.int32UToBuf(crc32) : Buffer.from('');
+
+		const header = Buffer.concat([tools.binStrToBuf(flags.join('')), crc32buf]);
+		return Buffer.concat([tools.int8UToBuf(this.options.version), tools.int8UToBuf(header.length), header]);
+	}
+
 	async serialize(what) {
 		let encoded = this.options.useMsgpack ? msgpack.encode(what) : Buffer.from(JSON.stringify(what));
 		const useZlib = this.options.useZlib && (this.options.useZlibMinLen >= encoded.length);
 
 		if (useZlib) encoded = await this.deflate(encoded);
 
-		const crcBuf = Buffer.from(this.options.useCrc32 ? crc32(encoded).toString(16) : '', 'hex');
+		const header = this.constructHeader(
+			[this.options.useMsgpack ? 1 : 0, useZlib ? 1 : 0],
+			this.options.useCrc32 ? crc32(encoded) : false
+		);
 
-		let header = [];
-		header[0] = String.fromCharCode(this.options.serializeVersion);
-		header[1] = this.options.useMsgpack ? 'm' : 'j';
-		header[2] = String.fromCharCode(crcBuf.length);
-		header[3] = useZlib ? 'z' : 'n';
+		return Buffer.concat([header, encoded]);
+	}
 
-		const headerBuf = Buffer.from(header.join(''));
-		const headerLength = Buffer.from(String.fromCharCode(headerBuf.length));
-		if (headerLength.length !== 1) return false;
+	parsePacket(msg) {
+		const version = tools.bufToInt8(msg.slice(0, 1));
+		if (version !== this.options.version || msg.length < 2) return false;
 
-		return Buffer.concat([headerLength, headerBuf, crcBuf, encoded]);
+		const headerLen = tools.bufToInt8U(msg.slice(1, 2));
+		if (msg.length < headerLen + 2) return false;
+
+		const headerBuf = msg.slice(2, headerLen + 2);
+
+		const flags = tools.bufTobinStr(headerBuf.slice(0, 1));
+		const useCrc = !!parseInt(flags[6]);
+		const crc32 = useCrc ? tools.bufToInt32U(headerBuf.slice(1, 5)) : false;
+		const payload = msg.slice(headerLen + 2);
+
+		return {
+			flags,
+			crc32,
+			payload
+		};
 	}
 
 	async deserialize(what) {
-		if (!Buffer.isBuffer(what)) return 1;
-		const headerLength = what.toString('utf8', 0, 1).charCodeAt();
-		const header = what.toString('utf8', 1, headerLength + 1).split('');
-		if (header.length < this.options.headerMinLength) return 2;
+		if (!Buffer.isBuffer(what)) return null;
+		const parsed = this.parsePacket(what);
+		if (!parsed) return null;
 
-		const serializeVersion = header[0].charCodeAt();
-		const useMsgpack = header[1] === 'm';
-		const crcLength = header[2].charCodeAt();
-		const useZlib = header[3] === 'z';
+		let encoded = parsed.payload;
 
-		if (serializeVersion !== this.options.serializeVersion) return 3;
-
-		let encoded = what.slice(1 + headerLength + crcLength);
-
-		if (crcLength > 0) {
-			const msgCrc = what.toString('hex', 1 + headerLength, 1 + headerLength + crcLength);
-			if (crc32(encoded).toString(16) !== msgCrc) return 4;
+		if (parsed.crc32 !== false) {
+			if (crc32(encoded) !== parsed.crc32) return null;
 		}
+		const useMsgpack = parsed.flags[0];
+		const useZlib = parsed.flags[1];
 
 		if (useZlib) encoded = await this.inflate(encoded);
 
@@ -88,6 +132,7 @@ class Crypt {
 			keySalt          : 'tuMF9r47Tp444f',
 			cryptMode        : 'aes-256-cbc',
 			useSerializer    : true,
+			useMsgpack       : true,
 			serializerOptions: {}
 		}, options);
 		Object.assign(this.options, {
@@ -97,8 +142,8 @@ class Crypt {
 		if (this.options.useSerializer) this.serializer = new Serializer(this.options.serializerOptions);
 	}
 
-	genKey(passkey, id = '') {
-		return cryptTools.hash(`${this.options.keySalt}${id}${passkey}`, this.options.keyMode);
+	genKey(passkey, id = false) {
+		return tools.hash(`${this.options.keySalt}${id !== false ? id : ''}${passkey}`, this.options.keyMode);
 	}
 
 	_process(processor, data) {
@@ -123,45 +168,95 @@ class Crypt {
 		});
 	}
 
-	async encrypt(key, data, id = '', useSerializer = true) {
-		id = '' + id;
-		if (this.options.useSerializer && useSerializer) data = await this.serializer.serialize(data, this.options.serializerOptions);
-		const cipher = crypto.createCipher(this.options.cryptMode, this.genKey(key, id));
-		data = await this._process(cipher, data);
+	constructHeader(id, userData) {
+		if (userData !== false) {
+			userData = this.options.useMsgpack ? msgpack.encode(userData) : Buffer.from(JSON.stringify(userData));
+		} else {
+			userData = Buffer.from('');
+		}
 
-		const idBuffer = Buffer.from(id);
+		const flags = tools.binStrToBuf(Object.assign(Array(8).fill(0), [
+			this.options.useMsgpack ? 1 : 0,
+			this.options.useSerializer ? 1 : 0,
+			id !== false ? 1 : 0,
+			userData.length !== 0 ? 1 : 0
+		]).join(''));
 
-		let header = [];
-		header[0] = String.fromCharCode(this.options.version);
-		header[1] = String.fromCharCode(idBuffer.length);
-		header[2] = String.fromCharCode(0); //@todo: for cryptMode flag
-		header[3] = String.fromCharCode(0); //@todo: for keyMode flag
+		let info = flags;
+		if (id !== false) {
+			id = '' + id;
+			info = Buffer.concat([info, tools.int8UToBuf(id.length), Buffer.from(id)]);
+		}
 
-		if (header.length >= 128 || id.length >= 128) return false;
-		const headerBuffer = Buffer.from(header.join(''));
-		const headerLength = Buffer.from(String.fromCharCode(header.length));
+		let header = Buffer.concat([
+			tools.int8UToBuf(this.options.version),
+			tools.int8UToBuf(info.length),
+			info
+		]);
 
-		return Buffer.concat([headerLength, headerBuffer, idBuffer, data]);
+		if (userData.length !== 0) header = Buffer.concat([header, tools.int32UToBuf(userData.length), userData]);
+
+		return header;
 	}
 
-	async decrypt(key, data, useSerializer = true) {
-		if (!Buffer.isBuffer(data)) return null;
-		try {
-			const headerLength = data.toString('utf8', 0, 1).charCodeAt();
-			let header = data.toString('utf8', 1, headerLength + 1).split('');
-			if (header.length !== headerLength) return null;
-			if (header[0].charCodeAt() !== this.options.version) return null;
-			const idLength = header[1].charCodeAt();
-			const id = data.slice(1 + headerLength, 1 + headerLength + idLength);
-			data = data.slice(1 + headerLength + idLength);
+	async encrypt(key, data, id = false, headerData = false, useSerializer = true) {
+		const header = this.constructHeader(id, headerData);
+		if (this.options.useSerializer && useSerializer) data = await this.serializer.serialize(data);
 
-			const decipher = crypto.createDecipher(this.options.cryptMode, this.genKey(key, id));
-			data = await this._process(decipher, data);
+		const cipher = crypto.createCipher(this.options.cryptMode, this.genKey(key, id));
+		const encrypted = await this._process(cipher, data);
+
+		return Buffer.concat([header, encrypted]);
+	}
+
+	parsePacket(packet) {
+		const version = tools.bufToInt8U(packet.slice(0, 1));
+		if (version !== this.options.version) return false;
+
+		const infoLength = tools.bufToInt8U(packet.slice(1, 2));
+		const info = packet.slice(2, infoLength + 2);
+
+		const flags = tools.bufTobinStr(info.slice(0, 1));
+		const useMsgpack = !!parseInt(flags[0]);
+		const useSerializer = !!parseInt(flags[1]);
+		const hasId = !!parseInt(flags[2]);
+		const hasUserData = !!parseInt(flags[3]);
+
+		let id = false;
+		let userData = false;
+		let userDataLen = 0;
+
+		if (hasId) {
+			const idLen = tools.bufToInt8U(info.slice(1, 2));
+			id = info.slice(2, idLen + 2).toString();
+		}
+
+		if (hasUserData) {
+			userDataLen = tools.bufToInt32U(packet.slice(2 + info.length, 2 + info.length + 4));
+			const userDataRaw = packet.slice(2 + info.length + 4, 2 + info.length + 4 + userDataLen);
+			userData = useMsgpack ? msgpack.decode(userDataRaw) : JSON.stringify(userDataRaw.toString());
+		}
+		const data = packet.slice(2 + info.length + 4 + userDataLen);
+
+		return {data, id, userData, useSerializer};
+	}
+
+	async decrypt(key, payload, returnExtended = false) {
+		if (!Buffer.isBuffer(payload)) return null;
+		let decrypted, id, userData;
+		try {
+			const packet = this.parsePacket(payload);
+			const decipher = crypto.createDecipher(this.options.cryptMode, this.genKey(key, packet.id));
+			decrypted = await this._process(decipher, packet.data);
+			id = packet.id;
+			userData = packet.userData;
+			payload = (packet.useSerializer) ? await this.serializer.deserialize(decrypted) : decrypted;
 		} catch (e) {
 			return null;
 		}
-		return (this.options.useSerializer && useSerializer) ? await this.serializer.deserialize(data, this.options.serializerOptions) : data;
+
+		return returnExtended ? {id, userData, payload} : payload;
 	}
 }
 
-module.exports = Object.assign({Crypt, Serializer}, cryptTools);
+module.exports = Object.assign({Crypt, Serializer}, tools);
