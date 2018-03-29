@@ -199,9 +199,10 @@ class Crypt {
 		return header;
 	}
 
-	async encrypt(key, data, id = false, headerData = false, useSerializer = true) {
-		const header = this.constructHeader(id, headerData);
+	async encrypt(key, data, id = false, userData = false, useSerializer = true) {
+		const header = this.constructHeader(id, userData);
 		if (this.options.useSerializer && useSerializer) data = await this.serializer.serialize(data);
+		key = typeof key === 'function' ? await key(userData) : key;
 
 		const cipher = crypto.createCipher(this.options.cryptMode, this.genKey(key, id));
 		const encrypted = await this._process(cipher, data);
@@ -247,7 +248,7 @@ class Crypt {
 
 		try {
 			const packet = this.parsePacket(data);
-			key = typeof key === 'function' ? await key(packet) : key;
+			key = typeof key === 'function' ? await key(packet.userData) : key;
 
 			const decipher = crypto.createDecipher(this.options.cryptMode, this.genKey(key, packet.id));
 			payload = await this._process(decipher, packet.payload);
