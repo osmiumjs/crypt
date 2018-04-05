@@ -73,7 +73,7 @@ class Serializer {
 
 	async serialize(what) {
 		let encoded = this.options.useMsgpack ? msgpack.encode(what) : Buffer.from(JSON.stringify(what));
-		const useZlib = this.options.useZlib && (this.options.useZlibMinLen >= encoded.length);
+		const useZlib = this.options.useZlib && (this.options.useZlibMinLen <= encoded.length);
 
 		if (useZlib) encoded = await this.deflate(encoded);
 
@@ -116,8 +116,8 @@ class Serializer {
 		if (parsed.crc32 !== false) {
 			if (crc32(encoded) !== parsed.crc32) return null;
 		}
-		const useMsgpack = parsed.flags[0];
-		const useZlib = parsed.flags[1];
+		const useMsgpack = !!parseInt(parsed.flags[0]);
+		const useZlib = !!parseInt(parsed.flags[1]);
 
 		if (useZlib) encoded = await this.inflate(encoded);
 
