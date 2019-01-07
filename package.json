@@ -4,9 +4,10 @@
 	"license"     : "MIT",
 	"author"      : "Vasiliy Isaichkin <vasiliy@isaichkin.ru>",
 	"repository"  : "https://github.com/VasiliyIsaichkin/osmium-crypt",
-	"version"     : "0.2.3",
+	"version"     : "0.3.0",
 	"dependencies": {
-		"notepack.io": "^2.1.2",
-		"crc"        : "^3.5.0"
+		"crc"         : "^3.8.0",
+		"notepack.io" : "^2.2.0",
+		"osmium-tools": "^0.1.12"
 	}
 }
