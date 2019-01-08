@@ -19,33 +19,31 @@ function pbkdf2(password, salt, iterations, keylen, digest) {
 
 const tools = {
 	crypto,
-	hash         : (what, mode = 'sha256', encoding = 'utf8', digest = 'hex') =>
+	hash       : (what, mode = 'sha256', encoding = 'utf8', digest = 'hex') =>
 		crypto.createHash(mode).update(what, encoding).digest(digest),
-	isHash       : (what, type = 'sha256') =>
+	isHash     : (what, type = 'sha256') =>
 		(new RegExp(`[0-9a-f]{${tools.hash('', type).length}}`, 'i')).test(what),
-	int8ToBuf    : (int) => makeWBuffer(int, 'writeInt8', 1),
-	int8UToBuf   : (int) => makeWBuffer(int, 'writeUInt8', 1),
-	int16ToBuf   : (int, be) => makeWBuffer(int, `writeInt16${be ? 'BE' : 'LE'}`, 2),
-	int16UToBuf  : (int, be) => makeWBuffer(int, `writeUInt16${be ? 'BE' : 'LE'}`, 2),
-	int32ToBuf   : (int, be) => makeWBuffer(int, `writeInt32${be ? 'BE' : 'LE'}`, 4),
-	int32UToBuf  : (int, be) => makeWBuffer(int, `writeUInt32${be ? 'BE' : 'LE'}`, 4),
-	intToBuf     : (int, len = 7, be) => {
+	int8ToBuf  : (int) => makeWBuffer(int, 'writeInt8', 1),
+	int8UToBuf : (int) => makeWBuffer(int, 'writeUInt8', 1),
+	int16ToBuf : (int, be) => makeWBuffer(int, `writeInt16${be ? 'BE' : 'LE'}`, 2),
+	int16UToBuf: (int, be) => makeWBuffer(int, `writeUInt16${be ? 'BE' : 'LE'}`, 2),
+	int32ToBuf : (int, be) => makeWBuffer(int, `writeInt32${be ? 'BE' : 'LE'}`, 4),
+	int32UToBuf: (int, be) => makeWBuffer(int, `writeUInt32${be ? 'BE' : 'LE'}`, 4),
+	intToBuf   : (int, len = 7, be) => {
 		const buf = Buffer.alloc(len);
 		buf[`writeInt${be ? 'BE' : 'LE'}`](int, 0, len);
 		return buf;
 	},
-	bufToInt8    : (buf) => buf.readInt8(),
-	bufToInt8U   : (buf) => buf.readUInt8(),
-	bufToInt16   : (buf, be) => buf[`readInt16${be ? 'BE' : 'LE'}`](),
-	bufToInt16U  : (buf, be) => buf[`readUInt16${be ? 'BE' : 'LE'}`](),
-	bufToInt32   : (buf, be) => buf[`readInt32${be ? 'BE' : 'LE'}`](),
-	bufToInt32U  : (buf, be) => buf[`readUInt32${be ? 'BE' : 'LE'}`](),
-	bufToInt     : (buf, len = 7, be) => buf[`readInt${be ? 'BE' : 'LE'}`](0, len),
-	bufToBufLen8 : (buf) => Buffer.concat([tools.int8UToBuf(buf.length), buf]),
-	bufToBufLen32: (buf) => Buffer.concat([tools.int32UToBuf(buf.length), buf]),
-	pad          : (str, z = 8) => str.length < z ? tools.pad('0' + str, z) : str,
-	bufTobinStr  : (buf) => tools.pad(tools.bufToInt8U(buf).toString(2)),
-	binStrToBuf  : (str) => tools.int8UToBuf(parseInt(str, 2))
+	bufToInt8  : (buf) => buf.readInt8(),
+	bufToInt8U : (buf) => buf.readUInt8(),
+	bufToInt16 : (buf, be) => buf[`readInt16${be ? 'BE' : 'LE'}`](),
+	bufToInt16U: (buf, be) => buf[`readUInt16${be ? 'BE' : 'LE'}`](),
+	bufToInt32 : (buf, be) => buf[`readInt32${be ? 'BE' : 'LE'}`](),
+	bufToInt32U: (buf, be) => buf[`readUInt32${be ? 'BE' : 'LE'}`](),
+	bufToInt   : (buf, len = 7, be) => buf[`readInt${be ? 'BE' : 'LE'}`](0, len),
+	pad        : (str, z = 8) => str.length < z ? tools.pad('0' + str, z) : str,
+	bufTobinStr: (buf) => tools.pad(tools.bufToInt8U(buf).toString(2)),
+	binStrToBuf: (str) => tools.int8UToBuf(parseInt(str, 2))
 };
 
 class Serializer {
@@ -141,10 +139,9 @@ class PacketExtracor {
 		this.position = 0;
 	}
 
-	getBuf(lenBits = 8) {
-		let bytes = lenBits / 8;
-		const dataLength = tools.bufToInt8U(this.packet.slice(this.position, this.position + bytes));
-		this.position += bytes;
+	getBuf() {
+		const dataLength = tools.bufToInt32U(this.packet.slice(this.position, this.position + 4));
+		this.position += 4;
 		const data = this.packet.slice(this.position, this.position + dataLength);
 		this.position += dataLength;
 		return data;
@@ -163,9 +160,40 @@ class PacketExtracor {
 		return out;
 	}
 
-	getInt8() {
+	getInt8U() {
 		this.position++;
 		return tools.bufToInt8U(this.packet.slice(this.position - 1, this.position));
+	}
+}
+
+class PacketConstructor {
+	constructor() {
+		this.packet = Buffer.from([]);
+	}
+
+	add(what) {
+		this.packet = Buffer.concat([this.packet, what]);
+	}
+
+	addFlags(flags) {
+		this.add(tools.binStrToBuf(Object.assign(Array(8).fill(0), flags).join('')));
+	}
+
+	addBuf(buf) {
+		this.add(tools.int32UToBuf(buf.length));
+		this.add(buf);
+	}
+
+	addPacket(packet) {
+		this.add(packet.make(true));
+	}
+
+	addInt8U(int) {
+		this.add(tools.int8UToBuf(int));
+	}
+
+	make(withLen = true) {
+		return withLen ? Buffer.concat([tools.int32UToBuf(this.packet.length), this.packet]) : this.packet;
 	}
 }
 
@@ -174,7 +202,7 @@ class Crypt {
 		this.options = Object.assign({
 			keyMode          : 'sha512',
 			keySize          : 256,
-			keySalt          : 'tuMF9r47Tp444f',
+			keySalt          : 'TUXwgjuGR9aPhB',
 			cryptMode        : 'aes-256-cbc',
 			ivLength         : 16,
 			useSerializer    : true,
@@ -182,7 +210,7 @@ class Crypt {
 			serializerOptions: {}
 		}, options);
 		Object.assign(this.options, {
-			version: 2
+			version: 3
 		});
 
 		if (this.options.useSerializer) this.serializer = new Serializer(this.options.serializerOptions);
@@ -215,32 +243,27 @@ class Crypt {
 	}
 
 	constructHeader(iv, id = false, userData = {}) {
-		if (userData !== false) {
-			userData = this.options.useMsgpack ? msgpack.encode(userData) : Buffer.from(JSON.stringify(userData));
-		} else {
-			userData = Buffer.from('');
-		}
+		userData = userData === false
+			? Buffer.from('')
+			: this.options.useMsgpack ? msgpack.encode(userData) : Buffer.from(JSON.stringify(userData));
 
-		const flags = tools.binStrToBuf(Object.assign(Array(8).fill(0), [
+		let info = new PacketConstructor();
+		info.addFlags([
 			this.options.useMsgpack ? 1 : 0,
 			this.options.useSerializer ? 1 : 0,
 			id !== false ? 1 : 0,
 			userData.length !== 0 ? 1 : 0
-		]).join(''));
-
-		let info = flags;
-
-		info = Buffer.concat([info, tools.bufToBufLen8(Buffer.from(iv))]);
-		if (id !== false) info = Buffer.concat([info, tools.bufToBufLen8(Buffer.from('' + id))]);
-
-		let header = Buffer.concat([
-			tools.int8UToBuf(this.options.version),
-			tools.bufToBufLen8(info)
 		]);
+		info.addBuf(iv);
+		if (id !== false) info.addBuf(Buffer.from('' + id));
+		if (userData.length !== 0) info.addBuf(userData);
 
-		if (userData.length !== 0) header = Buffer.concat([header, tools.bufToBufLen32(userData)]);
 
-		return header;
+		let header = new PacketConstructor();
+		header.addInt8U(this.options.version);
+		header.addPacket(info);
+
+		return header.make(false);
 	}
 
 	async encrypt(key, data, id = false, userData = false, useSerializer = true) {
@@ -256,8 +279,7 @@ class Crypt {
 
 	parsePacket(packetRaw) {
 		let packet = new PacketExtracor(packetRaw);
-		const version = packet.getInt8();
-
+		const version = packet.getInt8U();
 		if (version !== this.options.version) return false;
 
 		const info = new PacketExtracor(packet.getBuf());
@@ -269,7 +291,7 @@ class Crypt {
 		const id = flags.hasId ? info.getBuf().toString() : false;
 
 		if (flags.hasUserData) {
-			const userDataRaw = info.getBuf(32);
+			const userDataRaw = info.getBuf();
 			userData = flags.useMsgpack ? msgpack.decode(userDataRaw) : JSON.stringify(userDataRaw.toString());
 		}
 		const payload = packet.getBufFin();
@@ -280,9 +302,9 @@ class Crypt {
 	async decrypt(key, data, returnExtended = false) {
 		if (!Buffer.isBuffer(data)) return null;
 		let payload, id, iv, userData;
+		const packet = this.parsePacket(data);
 
 		try {
-			const packet = this.parsePacket(data);
 			key = typeof key === 'function' ? await key(packet.userData) : key;
 
 			const decipher = crypto.createDecipheriv(this.options.cryptMode, await this.genKey(key, packet.id), packet.iv);
