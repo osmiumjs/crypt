@@ -2,9 +2,15 @@
 	"name"        : "osmium-crypt",
 	"description" : "Osmium Crypt tools",
 	"license"     : "MIT",
-	"author"      : "Vasiliy Isaichkin <vasiliy@isaichkin.ru>",
+	"author"      : {
+		"name" : "Vasiliy Isaichkin",
+		"email": "vasiliy@isaichkin.ru"
+	},
 	"repository"  : "https://github.com/VasiliyIsaichkin/osmium-crypt",
-	"version"     : "0.4.1",
+	"bugs"        : {
+		"url": "https://github.com/VasiliyIsaichkin/osmium-crypt/issues"
+	},
+	"version"     : "0.4.8",
 	"dependencies": {
 		"crc"         : "^3.8.0",
 		"notepack.io" : "^2.2.0",
