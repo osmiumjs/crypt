@@ -10,10 +10,11 @@
 	"bugs"        : {
 		"url": "https://github.com/VasiliyIsaichkin/osmium-crypt/issues"
 	},
-	"version"     : "0.4.8",
+	"version"     : "0.4.9",
 	"dependencies": {
 		"crc"         : "^3.8.0",
 		"notepack.io" : "^2.2.0",
-		"osmium-tools": "^0.1.12"
+		"osmium-tools": "^0.1.12",
+		"base-x"      : "^3.0.5"
 	}
 }

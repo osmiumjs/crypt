@@ -2,6 +2,17 @@ const crypto = require('crypto');
 const msgpack = require('notepack.io');
 const crc32 = require('crc').crc32;
 const zlib = require('zlib');
+const BaseX = require('base-x');
+
+const BASE_ALPHABETS = {
+	BASE16: '0123456789abcdef',
+	BASE32: '0123456789ABCDEFGHJKMNPQRSTVWXYZ',
+	BASE36: '0123456789abcdefghijklmnopqrstuvwxyz',
+	BASE58: '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz',
+	BASE62: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
+	BASE64: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+	BASE66: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~'
+};
 
 function makeWBuffer(int, name, length) {
 	const buf = Buffer.alloc(length);
@@ -16,34 +27,55 @@ function pbkdf2(password, salt = 'superSalt', iterations = 1, keylen = 32, diges
 		));
 }
 
+function baseXEncode(what, base) {return BaseX(base).encode(what);}
+
+function baseXDecode(what, base, asBuffer = false) {return BaseX(base).decode(what)[asBuffer ? 'asBuffer' : 'toString']();}
+
+
 const tools = {
+	BASE_ALPHABETS,
+	BaseX,
 	crypto,
 	pbkdf2,
-	hash       : (what, mode = 'sha256', encoding = 'utf8', digest = 'hex') =>
+	base16Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE16),
+	base16Decode: (what, asBuffer = false) => baseXDecode(what, BASE_ALPHABETS.BASE16, asBuffer),
+	base32Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE32),
+	base32Decode: (what, asBuffer = false) => baseXDecode(what, BASE_ALPHABETS.BASE32, asBuffer),
+	base36Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE36),
+	base36Decode: (what, asBuffer = false) => baseXDecode(what, BASE_ALPHABETS.BASE36, asBuffer),
+	base58Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE58),
+	base58Decode: (what, asBuffer = false) => baseXDecode(what, BASE_ALPHABETS.BASE58, asBuffer),
+	base62Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE62),
+	base62Decode: (what, asBuffer = false) => baseXDecode(what, BASE_ALPHABETS.BASE62, asBuffer),
+	base64Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE64),
+	base64Decode: (what, asBuffer = false) => baseXDecode(what, BASE_ALPHABETS.BASE64, asBuffer),
+	base66Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE66),
+	base66Decode: (what, asBuffer = false) => baseXDecode(what, BASE_ALPHABETS.BASE66, asBuffer),
+	hash        : (what, mode = 'sha256', encoding = 'utf8', digest = 'hex') =>
 		crypto.createHash(mode).update(what, encoding).digest(digest),
-	isHash     : (what, type = 'sha256') =>
+	isHash      : (what, type = 'sha256') =>
 		(new RegExp(`[0-9a-f]{${tools.hash('', type).length}}`, 'i')).test(what),
-	int8ToBuf  : (int) => makeWBuffer(int, 'writeInt8', 1),
-	int8UToBuf : (int) => makeWBuffer(int, 'writeUInt8', 1),
-	int16ToBuf : (int, be) => makeWBuffer(int, `writeInt16${be ? 'BE' : 'LE'}`, 2),
-	int16UToBuf: (int, be) => makeWBuffer(int, `writeUInt16${be ? 'BE' : 'LE'}`, 2),
-	int32ToBuf : (int, be) => makeWBuffer(int, `writeInt32${be ? 'BE' : 'LE'}`, 4),
-	int32UToBuf: (int, be) => makeWBuffer(int, `writeUInt32${be ? 'BE' : 'LE'}`, 4),
-	intToBuf   : (int, len = 7, be) => {
+	int8ToBuf   : (int) => makeWBuffer(int, 'writeInt8', 1),
+	int8UToBuf  : (int) => makeWBuffer(int, 'writeUInt8', 1),
+	int16ToBuf  : (int, be) => makeWBuffer(int, `writeInt16${be ? 'BE' : 'LE'}`, 2),
+	int16UToBuf : (int, be) => makeWBuffer(int, `writeUInt16${be ? 'BE' : 'LE'}`, 2),
+	int32ToBuf  : (int, be) => makeWBuffer(int, `writeInt32${be ? 'BE' : 'LE'}`, 4),
+	int32UToBuf : (int, be) => makeWBuffer(int, `writeUInt32${be ? 'BE' : 'LE'}`, 4),
+	intToBuf    : (int, len = 7, be) => {
 		const buf = Buffer.alloc(len);
 		buf[`writeInt${be ? 'BE' : 'LE'}`](int, 0, len);
 		return buf;
 	},
-	bufToInt8  : (buf) => buf.readInt8(0),
-	bufToInt8U : (buf) => buf.readUInt8(0),
-	bufToInt16 : (buf, be) => buf[`readInt16${be ? 'BE' : 'LE'}`](0),
-	bufToInt16U: (buf, be) => buf[`readUInt16${be ? 'BE' : 'LE'}`](0),
-	bufToInt32 : (buf, be) => buf[`readInt32${be ? 'BE' : 'LE'}`](0),
-	bufToInt32U: (buf, be) => buf[`readUInt32${be ? 'BE' : 'LE'}`](0),
-	bufToInt   : (buf, len = 7, be) => buf[`readInt${be ? 'BE' : 'LE'}`](0, len),
-	pad        : (str, z = 8) => str.length < z ? tools.pad('0' + str, z) : str,
-	bufTobinStr: (buf) => tools.pad(tools.bufToInt8U(buf).toString(2)),
-	binStrToBuf: (str) => tools.int8UToBuf(parseInt(str, 2))
+	bufToInt8   : (buf) => buf.readInt8(0),
+	bufToInt8U  : (buf) => buf.readUInt8(0),
+	bufToInt16  : (buf, be) => buf[`readInt16${be ? 'BE' : 'LE'}`](0),
+	bufToInt16U : (buf, be) => buf[`readUInt16${be ? 'BE' : 'LE'}`](0),
+	bufToInt32  : (buf, be) => buf[`readInt32${be ? 'BE' : 'LE'}`](0),
+	bufToInt32U : (buf, be) => buf[`readUInt32${be ? 'BE' : 'LE'}`](0),
+	bufToInt    : (buf, len = 7, be) => buf[`readInt${be ? 'BE' : 'LE'}`](0, len),
+	pad         : (str, z = 8) => str.length < z ? tools.pad('0' + str, z) : str,
+	bufTobinStr : (buf) => tools.pad(tools.bufToInt8U(buf).toString(2)),
+	binStrToBuf : (str) => tools.int8UToBuf(parseInt(str, 2))
 };
 
 class Serializer {
