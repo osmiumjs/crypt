@@ -27,6 +27,10 @@ function pbkdf2(password, salt = 'superSalt', iterations = 1, keylen = 32, diges
 		));
 }
 
+async function pbkdf2b66(password, salt = 'superSalt', iterations = 1, keylen = 32, digest = 'sha512') {
+	return tools.base66Encode((await pbkdf2(password, salt, iterations, keylen, digest)).toString());
+}
+
 function baseXEncode(what, base) {return BaseX(base).encode(what);}
 
 function baseXDecode(what, base, asBuffer = false) {return BaseX(base).decode(what)[asBuffer ? 'asBuffer' : 'toString']();}
@@ -37,6 +41,7 @@ const tools = {
 	BaseX,
 	crypto,
 	pbkdf2,
+	pbkdf2b66,
 	base16Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE16),
 	base16Decode: (what, asBuffer = false) => baseXDecode(what, BASE_ALPHABETS.BASE16, asBuffer),
 	base32Encode: (what) => baseXEncode(what, BASE_ALPHABETS.BASE32),
