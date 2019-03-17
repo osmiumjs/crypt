@@ -28,13 +28,12 @@ function pbkdf2(password, salt = 'superSalt', iterations = 1, keylen = 32, diges
 }
 
 async function pbkdf2b66(password, salt = 'superSalt', iterations = 1, keylen = 32, digest = 'sha512') {
-	return tools.base66Encode((await pbkdf2(password, salt, iterations, keylen, digest)).toString());
+	return tools.base66Encode(await pbkdf2(password, salt, iterations, keylen, digest));
 }
 
-function baseXEncode(what, base) {return BaseX(base).encode(what);}
+function baseXEncode(what, base) {return BaseX(base).encode(Buffer.isBuffer(what) ? what : Buffer.from(what));}
 
 function baseXDecode(what, base, asBuffer = false) {return BaseX(base).decode(what)[asBuffer ? 'asBuffer' : 'toString']();}
-
 
 const tools = {
 	BASE_ALPHABETS,
