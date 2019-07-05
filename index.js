@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const msgpack = require('notepack.io');
+const msgpack = window && document ? require('osmium-notepack.io/browser') : require('osmium-notepack.io');
 const crc32 = require('crc').crc32;
 const zlib = require('zlib');
 const BaseX = require('base-x');
