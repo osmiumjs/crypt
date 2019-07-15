@@ -100,7 +100,6 @@ class Crypt {
 			userData = packet.useDataCoder ? this.dataDecoder.decode(packet.userData) : packet.userData;
 			id = packet.id;
 			iv = packet.iv;
-
 		} catch (e) {
 			return null;
 		}
