@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const {DataDecoder, DataEncoder, Serializer, Deserializer, tools} = require('osmium-serializer');
+const {Serialize, DataDecoder, DataEncoder, Serializer, Deserializer, tools} = require('osmium-serializer');
 
 function pbkdf2(password, salt = 'superSalt', iterations = 1, keylen = 32, digest = 'sha512') {
 	return new Promise(resolve =>
@@ -33,11 +33,15 @@ class Crypt {
 		});
 
 		if (this.options.useCoder) {
-			this.dataEncoder = new DataEncoder();
-			this.dataDecoder = new DataDecoder();
-			this.serializer = new Serializer();
-			this.deserializer = new Deserializer();
+			this.dataEncoder = Serialize.encoder;
+			this.dataDecoder = Serialize.decoder;
+			this.serializer = Serialize.serializer;
+			this.deserializer = Serialize.deserializer;
 		}
+	}
+
+	coderUse(val) {
+		Serialize.use(val);
 	}
 
 	async genKey(passkey, id = false) {
@@ -108,4 +112,4 @@ class Crypt {
 	}
 }
 
-module.exports = {Crypt, DataDecoder, DataEncoder, Serializer, Deserializer, tools};
+module.exports = {Crypt, Serialize, DataDecoder, DataEncoder, Serializer, Deserializer, tools};
