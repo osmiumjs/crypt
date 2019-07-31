@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const {Serialize, DataDecoder, DataEncoder, Serializer, Deserializer, tools} = require('osmium-serializer');
+const {Serialize, Serializer, Deserializer, DataEncoder, DataDecoder, DataCoder, tools, oTools} = require('osmium-serializer');
 
 function pbkdf2(password, salt = 'superSalt', iterations = 1, keylen = 32, digest = 'sha512') {
 	return new Promise(resolve =>
@@ -33,15 +33,14 @@ class Crypt {
 		});
 
 		if (this.options.useCoder) {
-			this.dataEncoder = Serialize.encoder;
-			this.dataDecoder = Serialize.decoder;
-			this.serializer = Serialize.serializer;
-			this.deserializer = Serialize.deserializer;
+			this.coder = new DataCoder();
+			this.serializer = new Serialize();
 		}
 	}
 
-	coderUse(val) {
-		Serialize.use(val);
+	use(...val) {
+		this.coder.use(...val);
+		this.serializer.use(...val);
 	}
 
 	async genKey(passkey, id = false) {
@@ -71,8 +70,8 @@ class Crypt {
 		let iv = crypto.randomBytes(this.options.ivLength);
 		key = typeof key === 'function' ? await key(userData) : key;
 
-		data = this.options.useCoder && useDataCoder ? this.dataEncoder.auto(data) : data;
-		userData = this.options.useCoder && useDataCoder ? this.dataEncoder.auto(userData) : userData;
+		data = this.options.useCoder && useDataCoder ? this.coder.encode(data) : data;
+		userData = this.options.useCoder && useDataCoder ? this.coder.encode(userData) : userData;
 
 		const cipher = crypto.createCipheriv(this.options.cryptMode, await this.genKey(key, id), iv);
 		const payload = await this._process(cipher, data);
@@ -91,7 +90,7 @@ class Crypt {
 
 	async decrypt(key, data, returnExtended = false) {
 		if (!Buffer.isBuffer(data)) return null;
-		const packet = this.deserializer.deserialize(data, ['version', 'useDataCoder', 'id', 'userData', 'iv', 'payload']);
+		const packet = this.serializer.deserialize(data, ['version', 'useDataCoder', 'id', 'userData', 'iv', 'payload']);
 
 		let id, iv, userData, payload;
 
@@ -100,8 +99,8 @@ class Crypt {
 			const decipher = crypto.createDecipheriv(this.options.cryptMode, await this.genKey(key, packet.id), packet.iv);
 			payload = await this._process(decipher, packet.payload);
 
-			payload = packet.useDataCoder ? this.dataDecoder.decode(payload) : payload;
-			userData = packet.useDataCoder ? this.dataDecoder.decode(packet.userData) : packet.userData;
+			payload = packet.useDataCoder ? this.coder.decode(payload) : payload;
+			userData = packet.useDataCoder ? this.coder.decode(packet.userData) : packet.userData;
 			id = packet.id;
 			iv = packet.iv;
 		} catch (e) {
@@ -112,4 +111,4 @@ class Crypt {
 	}
 }
 
-module.exports = {Crypt, Serialize, DataDecoder, DataEncoder, Serializer, Deserializer, tools};
+module.exports = {Crypt, Serialize, Serializer, Deserializer, DataEncoder, DataDecoder, DataCoder, tools, oTools};
