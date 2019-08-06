@@ -10,7 +10,7 @@
 	"bugs"        : {
 		"url": "https://github.com/VasiliyIsaichkin/osmium-crypt/issues"
 	},
-	"version"     : "0.6.0",
+	"version"     : "0.6.1",
 	"dependencies": {
 		"osmium-serializer": "^0.3.0",
 		"osmium-tools"     : "^0.2.5"
