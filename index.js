@@ -95,12 +95,11 @@ class Crypt {
 		let id, iv, userData, payload;
 
 		try {
-			key = typeof key === 'function' ? await key(packet.userData) : key;
+			userData = packet.useDataCoder ? (new DataDecoder()).decode(packet.userData) : packet.userData;
+			key = typeof key === 'function' ? await key(userData) : key;
 			const decipher = crypto.createDecipheriv(this.options.cryptMode, await this.genKey(key, packet.id), packet.iv);
 			payload = await this._process(decipher, packet.payload);
-
 			payload = packet.useDataCoder ? this.coder.decode(payload) : payload;
-			userData = packet.useDataCoder ? this.coder.decode(packet.userData) : packet.userData;
 			id = packet.id;
 			iv = packet.iv;
 		} catch (e) {
