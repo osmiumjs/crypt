@@ -1,0 +1,7 @@
+{
+	"entryPoints": ["./src/index.ts"],
+	"name"       : "@osmium/crypt",
+	"out"        : "docs",
+	"theme"      : "./node_modules/typedoc-neo-theme/bin/default",
+	"includes"   : "./mds/"
+}

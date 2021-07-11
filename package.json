@@ -1,18 +1,41 @@
 {
-	"name"        : "osmium-crypt",
-	"description" : "Osmium Crypt tools",
-	"license"     : "MIT",
-	"author"      : {
+	"name"           : "@osmium/crypt",
+	"description"    : "Osmium crypt library",
+	"license"        : "MIT",
+	"author"         : {
 		"name" : "Vasiliy Isaichkin",
 		"email": "vasiliy@isaichkin.ru"
 	},
-	"repository"  : "https://github.com/VasiliyIsaichkin/osmium-crypt",
-	"bugs"        : {
-		"url": "https://github.com/VasiliyIsaichkin/osmium-crypt/issues"
+	"repository"     : "https://github.com/osmiumjs/crypt",
+	"version"        : "0.4.0",
+	"scripts"        : {
+		"compile"       : "tsc",
+		"compress"      : "terser --compress --ecma 2015 -o ./dist/index.min.js -- ./dist/index.min.js",
+		"make_docs"     : "typedoc",
+		"test"          : "mocha tests",
+		"build"         : "rimraf dist docs defs && npm run compile && npm run make_docs && npm run test",
+		"prepublishOnly": "npm run build"
 	},
-	"version"     : "0.6.3",
-	"dependencies": {
-		"osmium-serializer": "^0.3.2",
-		"osmium-tools"     : "^0.2.11"
+	"dependencies"   : {
+		"elliptic"     : "~6.5.4",
+		"@osmium/coder": "^0.4.0"
+	},
+	"main"           : "./dist/index.js",
+	"types"          : "./defs/index.d.ts",
+	"devDependencies": {
+		"@types/elliptic"          : "^6.4.13",
+		"@types/mocha"             : "^8.2.3",
+		"@types/node"              : "~14.17.5",
+		"awesome-typescript-loader": "~5.2.1",
+		"buffer"                   : "^6.0.3",
+		"chai"                     : "^4.3.4",
+		"mocha"                    : "~8.3.2",
+		"rimraf"                   : "^3.0.2",
+		"terser"                   : "^5.7.1",
+		"typedoc"                  : "~0.20.37",
+		"typedoc-neo-theme"        : "~1.1.1",
+		"typescript"               : "4.2.4",
+		"webpack"                  : "~5.44.0",
+		"webpack-cli"              : "~4.7.2"
 	}
 }

@@ -1,6 +1,6 @@
-/dist
 /node_modules
 /.idea
 /test.js
 /.git
 /data.js
+/docs
