@@ -1,224 +1,107 @@
 /// <reference types="node" />
 import * as crypto from 'crypto';
 import { ec as EC } from 'elliptic';
-import { AESCryptOptions, PBKInput } from './types';
-import { Serializer, DataCoder, coderTools, nTools } from '@osmium/coder';
-import { DetectorCallback } from '@osmium/coder/src/types';
+import { Serializer, DataCoder, CoderTools, oTools } from '@osmium/coder';
 import { BinaryToTextEncoding } from 'crypto';
-export { Serializer, DataCoder, coderTools, nTools };
-declare function pbkdf2(password: PBKInput, salt?: PBKInput, iterations?: number, keyLength?: number, digest?: string): Promise<boolean | Buffer>;
-declare function pbkdf2b66(password: PBKInput, salt?: PBKInput, iterations?: number, keyLength?: number, digest?: string): Promise<string | boolean>;
-export declare const cryptTools: {
-    BASE_ALPHABETS: {
-        BASE16: string;
-        BASE36: string;
-        BASE58: string;
-        BASE62: string;
-        BASE66: string;
-    };
-    BaseX: typeof import("@osmium/coder/defs/lib/base-x").default;
-    base16Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-    base32Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-    base36Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-    base58Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-    base62Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-    base64Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-    base66Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-    base16Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-    base32Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-    base36Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-    base58Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-    base62Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-    base64Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-    base66Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-    twoInt32toInt53: (val: number[]) => number;
-    int53toTwoInt32: (val: number) => number[];
-    intToBuf: (int: number, len?: number | undefined, be?: boolean | undefined) => Buffer;
-    int8ToBuf: (int: number) => Buffer;
-    int8UToBuf: (int: number) => Buffer;
-    int16ToBuf: (int: number, be?: boolean | undefined) => Buffer;
-    int16UToBuf: (int: number, be?: boolean | undefined) => Buffer;
-    int32ToBuf: (int: number, be?: boolean | undefined) => Buffer;
-    int32UToBuf: (int: number, be?: boolean | undefined) => Buffer;
-    floatToBuf: (int: number, be?: boolean | undefined) => Buffer;
-    doubleToBuf: (int: number, be?: boolean | undefined) => Buffer;
-    bufToInt8: (buf: Buffer, offset?: number | undefined) => number;
-    bufToInt8U: (buf: Buffer, offset?: number | undefined) => number;
-    bufToInt16: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-    bufToInt16U: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-    bufToInt32: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-    bufToInt32U: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-    bufToInt: (buf: Buffer, len?: number | undefined, offset?: number | undefined, be?: boolean | undefined) => number;
-    bufToFloat: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-    bufToDouble: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-    pad: (str: string, z?: number | undefined) => string;
-    bufToBinFlags: (buf: Buffer, offset: number) => Boolean[];
-    binFlagsToBuf: (arr: boolean[]) => Buffer;
-    hexToBinStr: (val: string) => string;
-    crc32: any;
-} & {
-    crypto: typeof crypto;
-    pbkdf2: typeof pbkdf2;
-    pbkdf2b66: typeof pbkdf2b66;
-    hash: (what: any, mode?: string, encoding?: crypto.Encoding, digest?: crypto.BinaryToTextEncoding) => string;
-    isHash: (what: any, type?: string) => boolean;
-};
+import TypedArray = NodeJS.TypedArray;
+export declare type PBKInput = string | Buffer | TypedArray | DataView;
+export interface AESCryptOptions {
+    keyMode: string;
+    keySize: number;
+    keySalt: PBKInput;
+    cryptMode: string;
+    ivLength: number;
+    useCoder: boolean;
+    customCoder: DataCoder | null;
+    customSerializer: Serializer | null;
+    version: number;
+}
+export interface AESCryptOptionsArgs {
+    keyMode?: string;
+    keySize?: number;
+    keySalt?: PBKInput;
+    cryptMode?: string;
+    ivLength?: number;
+    useCoder?: boolean;
+    customCoder?: DataCoder | null;
+    customSerializer?: Serializer | null;
+    version?: number;
+}
+export { Serializer, DataCoder, CoderTools, oTools };
+export declare class CryptTools extends CoderTools {
+    static crypto: typeof crypto;
+    static pbkdf2(password: PBKInput, salt?: PBKInput, iterations?: number, keyLength?: number, digest?: string): Promise<boolean | Buffer>;
+    static pbkdf2b66(password: PBKInput, salt?: PBKInput, iterations?: number, keyLength?: number, digest?: string): Promise<string | boolean>;
+    static hash(what: any, mode?: string, encoding?: crypto.Encoding, digest?: BinaryToTextEncoding): string;
+    static isHash(what: any, type?: string): boolean;
+}
+export interface AesCryptPacket {
+    version: number;
+    useDataCoder: boolean;
+    id: null | string;
+    publicData: null | object | Buffer;
+    iv: Buffer;
+    payload: Buffer;
+}
+export interface AesCryptDecryptResult<PayloadType, PublicDataType> {
+    id: string | null;
+    iv: Buffer;
+    publicData: PublicDataType | null;
+    payload: PayloadType | null | object;
+}
 export declare class AesCrypt {
-    options: AESCryptOptions & object;
+    private readonly options;
     private readonly coder;
     private readonly serializer;
-    constructor(options?: {});
-    use<T>(id: number, detector: DetectorCallback, encode: (arg: T) => Buffer, decode: (arg: Buffer) => T): void;
-    genKey(passkey: PBKInput, id?: boolean): Promise<boolean | Buffer>;
+    constructor(options?: AESCryptOptionsArgs);
+    use<T>(id: number, detector: Function, encode: (arg: T) => Buffer, decode: (arg: Buffer) => T): void;
+    genKey(passkey: PBKInput, id?: null | string): Promise<boolean | Buffer>;
     private _process;
-    encrypt<T>(key: PBKInput | Function, data: T, id?: boolean, publicData?: boolean, useDataCoder?: boolean): Promise<Boolean | Buffer>;
-    slicePublicData<T>(data: Buffer): Promise<T | null>;
-    decrypt(key: PBKInput | Function, data: Buffer, returnExtended?: boolean): Promise<Buffer | {
-        id: any;
-        iv: any;
-        publicData: any;
-        payload: Buffer;
-    } | null>;
+    encrypt<T>(key: PBKInput | Function, data: T, id?: null | string, publicData?: null | object, useDataCoder?: boolean): Promise<Buffer>;
+    slicePublicData<T>(data: Buffer): Promise<T | object | null>;
+    decrypt<PayloadType, PublicDataType = null>(key: PBKInput | Function, data: Buffer, returnExtended?: boolean): Promise<AesCryptDecryptResult<PayloadType, PublicDataType> | PayloadType>;
 }
-export declare type ECDH_KeyPair = {
+export declare type ECDHKeyPair = {
     privKey: string;
     pubKey: string;
 };
-export declare class ECDH_Key {
+export declare class ECDHKey {
     ser: Serializer;
-    VERSION: Number;
-    CURVE: string;
+    version: number;
+    curve: string;
     ec: EC;
-    constructor();
+    constructor(curve?: string);
     private hexToB62;
     private b62PrivToHex;
-    generate(): ECDH_KeyPair;
-    static generate(): ECDH_KeyPair;
-    getPublicFromPrivate(privKey: string): ECDH_KeyPair;
-    static getPublicFromPrivate(privKey: string): ECDH_KeyPair;
+    generate(): ECDHKeyPair;
+    static generate(): ECDHKeyPair;
+    getPublicFromPrivate(privKey: string): ECDHKeyPair;
+    static getPublicFromPrivate(privKey: string): ECDHKeyPair;
 }
-export declare class ECDH_KeyDerivation {
+export declare type ECDHDerivationKeyPair = {
+    ourPrivate: string | Buffer;
+    theirPublic: string | Buffer;
+};
+export declare class ECDHKeyDerivation {
     private serializer;
     keyFormatVersion: number;
-    ec: EC | boolean;
-    curve: any;
+    ec: EC;
     ourKey: EC.KeyPair;
     theirKey: EC.KeyPair;
-    sharedKey: Buffer | boolean;
-    static createInstance(keyPair: ECDH_KeyPair): ECDH_KeyDerivation;
-    constructor(ourPrivate: string | Buffer, theirPublic: string | Buffer);
+    curve: string;
+    sharedKey: Buffer | null;
+    static createInstance(keyPair: ECDHDerivationKeyPair, curve?: string): ECDHKeyDerivation;
+    constructor(ourPrivate: string | Buffer, theirPublic: string | Buffer, curve?: string);
     private _decodePayload;
     getSharedKey(): Buffer;
 }
 declare const _default: {
     Serializer: typeof Serializer;
     DataCoder: typeof DataCoder;
-    coderTools: {
-        BASE_ALPHABETS: {
-            BASE16: string;
-            BASE36: string;
-            BASE58: string;
-            BASE62: string;
-            BASE66: string;
-        };
-        BaseX: typeof import("@osmium/coder/defs/lib/base-x").default;
-        base16Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base32Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base36Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base58Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base62Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base64Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base66Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base16Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-        base32Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-        base36Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-        base58Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-        base62Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-        base64Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-        base66Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-        twoInt32toInt53: (val: number[]) => number;
-        int53toTwoInt32: (val: number) => number[];
-        intToBuf: (int: number, len?: number | undefined, be?: boolean | undefined) => Buffer;
-        int8ToBuf: (int: number) => Buffer;
-        int8UToBuf: (int: number) => Buffer;
-        int16ToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        int16UToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        int32ToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        int32UToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        floatToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        doubleToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        bufToInt8: (buf: Buffer, offset?: number | undefined) => number;
-        bufToInt8U: (buf: Buffer, offset?: number | undefined) => number;
-        bufToInt16: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToInt16U: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToInt32: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToInt32U: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToInt: (buf: Buffer, len?: number | undefined, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToFloat: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToDouble: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        pad: (str: string, z?: number | undefined) => string;
-        bufToBinFlags: (buf: Buffer, offset: number) => Boolean[];
-        binFlagsToBuf: (arr: boolean[]) => Buffer;
-        hexToBinStr: (val: string) => string;
-        crc32: any;
-    };
-    nTools: typeof nTools;
-    cryptTools: {
-        BASE_ALPHABETS: {
-            BASE16: string;
-            BASE36: string;
-            BASE58: string;
-            BASE62: string;
-            BASE66: string;
-        };
-        BaseX: typeof import("@osmium/coder/defs/lib/base-x").default;
-        base16Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base32Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base36Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base58Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base62Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base64Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base66Encode: (what: string | Buffer, asAscii?: boolean | undefined) => string;
-        base16Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-        base32Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-        base36Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-        base58Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-        base62Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-        base64Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => Uint8Array | import("@osmium/coder/defs/types").DecodeResult;
-        base66Decode: (what: string, asBuffer?: boolean | undefined, asAscii?: boolean | undefined) => import("@osmium/coder/defs/types").DecodeResult;
-        twoInt32toInt53: (val: number[]) => number;
-        int53toTwoInt32: (val: number) => number[];
-        intToBuf: (int: number, len?: number | undefined, be?: boolean | undefined) => Buffer;
-        int8ToBuf: (int: number) => Buffer;
-        int8UToBuf: (int: number) => Buffer;
-        int16ToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        int16UToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        int32ToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        int32UToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        floatToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        doubleToBuf: (int: number, be?: boolean | undefined) => Buffer;
-        bufToInt8: (buf: Buffer, offset?: number | undefined) => number;
-        bufToInt8U: (buf: Buffer, offset?: number | undefined) => number;
-        bufToInt16: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToInt16U: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToInt32: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToInt32U: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToInt: (buf: Buffer, len?: number | undefined, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToFloat: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        bufToDouble: (buf: Buffer, offset?: number | undefined, be?: boolean | undefined) => number;
-        pad: (str: string, z?: number | undefined) => string;
-        bufToBinFlags: (buf: Buffer, offset: number) => Boolean[];
-        binFlagsToBuf: (arr: boolean[]) => Buffer;
-        hexToBinStr: (val: string) => string;
-        crc32: any;
-    } & {
-        crypto: typeof crypto;
-        pbkdf2: typeof pbkdf2;
-        pbkdf2b66: typeof pbkdf2b66;
-        hash: (what: any, mode?: string, encoding?: crypto.Encoding, digest?: crypto.BinaryToTextEncoding) => string;
-        isHash: (what: any, type?: string) => boolean;
-    };
-    ECDH_Key: typeof ECDH_Key;
-    ECDH_KeyDerivation: typeof ECDH_KeyDerivation;
+    CoderTools: typeof CoderTools;
+    oTools: typeof oTools;
+    CryptTools: typeof CryptTools;
+    ECDHKey: typeof ECDHKey;
+    ECDHKeyDerivation: typeof ECDHKeyDerivation;
 };
 export default _default;

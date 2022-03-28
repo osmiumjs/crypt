@@ -1,77 +1,127 @@
 import * as crypto from 'crypto';
 import {ec as EC} from 'elliptic';
-import {AESCryptOptions, PBKInput} from './types';
 import {Transform} from 'stream';
 
-import {Serializer, DataCoder, coderTools, nTools} from '@osmium/coder';
-import {DetectorCallback} from '@osmium/coder/src/types';
+import {Serializer, DataCoder, CoderTools, oTools} from '@osmium/coder';
 import {BinaryToTextEncoding} from 'crypto';
 
-export {Serializer, DataCoder, coderTools, nTools};
+import TypedArray = NodeJS.TypedArray;
 
-function pbkdf2(password: PBKInput, salt: PBKInput = 'vWiq8rHuWKur6bsnTa0aAHugsc0stJS5', iterations = 1, keyLength = 32, digest = 'sha512'): Promise<boolean | Buffer> {
-	return new Promise(resolve =>
-		crypto.pbkdf2(password, salt, iterations, keyLength, digest, (err, derivedKey) => resolve(err ? false : derivedKey)));
+export type PBKInput = string | Buffer | TypedArray | DataView;
+
+export interface AESCryptOptions {
+	keyMode: string;
+	keySize: number;
+	keySalt: PBKInput;
+	cryptMode: string;
+	ivLength: number;
+	useCoder: boolean;
+	customCoder: DataCoder | null,
+	customSerializer: Serializer | null,
+	version: number;
 }
 
-async function pbkdf2b66(password: PBKInput, salt: PBKInput = 'RGkLdvP36a1MIDEY5f0u714C3BipXR8k', iterations = 1, keyLength = 32, digest = 'sha512'): Promise<string | boolean> {
-	const res = await pbkdf2(password, salt, iterations, keyLength, digest);
-	if (!res) return false;
-
-	return coderTools.base66Encode(res.toString());
+export interface AESCryptOptionsArgs {
+	keyMode?: string;
+	keySize?: number;
+	keySalt?: PBKInput;
+	cryptMode?: string;
+	ivLength?: number;
+	useCoder?: boolean;
+	customCoder?: DataCoder | null,
+	customSerializer?: Serializer | null,
+	version?: number;
 }
 
-export const cryptTools = Object.assign(coderTools, {
-	crypto,
-	pbkdf2,
-	pbkdf2b66,
-	hash  : (what: any, mode = 'sha256', encoding: crypto.Encoding = 'utf8', digest: crypto.BinaryToTextEncoding = 'hex') =>
-		crypto.createHash(mode)
-		      .update(what, encoding)
-		      .digest(digest),
-	isHash: (what: any, type = 'sha256') =>
-		(new RegExp(`[0-9a-f]{${cryptTools.hash('', type).length}}`, 'i')).test(what)
-});
+export {Serializer, DataCoder, CoderTools, oTools};
+
+export class CryptTools extends CoderTools {
+	static crypto = crypto;
+
+	static async pbkdf2(password: PBKInput, salt: PBKInput = 'vWiq8rHuWKur6bsnTa0aAHugsc0stJS5', iterations = 1, keyLength = 32, digest = 'sha512'): Promise<boolean | Buffer> {
+		return new Promise(resolve =>
+			crypto.pbkdf2(password, salt, iterations, keyLength, digest, (err, derivedKey) =>
+				resolve(err ? false : derivedKey)
+			)
+		);
+	}
+
+	static async pbkdf2b66(password: PBKInput, salt: PBKInput = 'RGkLdvP36a1MIDEY5f0u714C3BipXR8k', iterations = 1, keyLength = 32, digest = 'sha512'): Promise<string | boolean> {
+		const res = await CryptTools.pbkdf2(password, salt, iterations, keyLength, digest);
+		if (!res) return false;
+
+		return CryptTools.base66Encode(res.toString());
+	}
+
+	static hash(what: any, mode = 'sha256', encoding: crypto.Encoding = 'utf8', digest: BinaryToTextEncoding = 'hex'): string {
+		return crypto
+		.createHash(mode)
+		.update(what, encoding)
+		.digest(digest);
+	}
+
+	static isHash(what: any, type = 'sha256'): boolean {
+		return (new RegExp(`[0-9a-f]{${CryptTools.hash('', type).length}}`, 'i')).test(what);
+	}
+}
+
+export interface AesCryptPacket {
+	version: number,
+	useDataCoder: boolean,
+	id: null | string,
+	publicData: null | object | Buffer,
+	iv: Buffer,
+	payload: Buffer
+}
+
+const AesCryptPacketSchema = ['version', 'useDataCoder', 'id', 'publicData', 'iv', 'payload'];
+
+export interface AesCryptDecryptResult<PayloadType, PublicDataType> {
+	id: string | null,
+	iv: Buffer,
+	publicData: PublicDataType | null,
+	payload: PayloadType | null | object
+}
 
 export class AesCrypt {
-	options: AESCryptOptions & object;
+	private readonly options: AESCryptOptions;
 	private readonly coder: DataCoder | null;
 	private readonly serializer: Serializer;
 
-	constructor(options = {}) {
-		this.options = Object.assign({
-			keyMode  : 'sha512',
-			keySize  : 256,
-			keySalt  : 'wS3frnWL5TysVZixQgHW0UuxUVZpR2Yp',
-			cryptMode: 'aes-256-cbc',
-			ivLength : 16,
-			useCoder : true
-		}, options);
+	constructor(options: AESCryptOptionsArgs = {}) {
+		this.options = {
+			keyMode         : 'sha512',
+			keySize         : 256,
+			keySalt         : 'h4xtHPsG5PzePQk41WrciTx4FQzbgtcb',
+			cryptMode       : 'aes-256-cbc',
+			ivLength        : 16,
+			useCoder        : true,
+			customCoder     : null,
+			customSerializer: null,
+			version         : 3
+		};
 
-		Object.assign(this.options, {
-			version: 1
-		});
+		Object.assign(this.options, options);
 
 		this.coder = null;
 
 		if (this.options.useCoder) {
-			// @ts-ignore
-			this.coder = this.options.useCoder?.coder || new DataCoder();
+			this.coder = this.options.customCoder || new DataCoder();
 		}
 
-		// @ts-ignore
-		this.serializer = this.options.useCoder?.serializer || new Serializer(this.options.useCoder?.coder);
+		this.serializer = this.options.customSerializer || new Serializer(this.coder || undefined);
+		this.serializer.registerSchema(1, AesCryptPacketSchema);
 	}
 
-	use<T>(id: number, detector: DetectorCallback, encode: (arg: T) => Buffer, decode: (arg: Buffer) => T): void {
+	use<T>(id: number, detector: Function, encode: (arg: T) => Buffer, decode: (arg: Buffer) => T): void {
 		if (!this.options.useCoder || !this.coder || !this.serializer) return;
 
-		this.coder.use<T>(id, detector, encode, decode);
-		this.serializer.use<T>(id, detector, encode, decode);
+		this.coder.use(id, detector, encode, decode);
+		this.serializer.use(id, detector, encode, decode);
 	}
 
-	async genKey(passkey: PBKInput, id = false): Promise<boolean | Buffer> {
-		return await pbkdf2(`${id ? id : ''}${passkey}`, this.options.keySalt, 1, this.options.keySize / 8, this.options.keyMode);
+	async genKey(passkey: PBKInput, id: null | string = null): Promise<boolean | Buffer> {
+		return CryptTools.pbkdf2(`${id ? id : ''}${passkey}`, this.options.keySalt, 1, this.options.keySize / 8, this.options.keyMode);
 	}
 
 	private _process(processor: Transform, data: any): Promise<Buffer> {
@@ -80,9 +130,9 @@ export class AesCrypt {
 				let out = Buffer.from('');
 
 				processor.on('readable', () => {
-					const data = processor.read();
-					if (!Buffer.isBuffer(data)) return;
-					out = Buffer.concat([out, data]);
+					const block = processor.read();
+					if (!Buffer.isBuffer(block)) return;
+					out = Buffer.concat([out, block]);
 				});
 				processor.on('end', () => resolve(out));
 				processor.write(data);
@@ -93,7 +143,7 @@ export class AesCrypt {
 		});
 	}
 
-	async encrypt<T>(key: PBKInput | Function, data: T, id = false, publicData = false, useDataCoder = true): Promise<Boolean | Buffer> {
+	async encrypt<T>(key: PBKInput | Function, data: T, id: null | string = null, publicData: null | object = null, useDataCoder: boolean = true): Promise<Buffer> {
 		let iv = crypto.randomBytes(this.options.ivLength);
 		key = typeof key === 'function' ? await key(publicData) : key;
 
@@ -103,7 +153,7 @@ export class AesCrypt {
 		const cipher = crypto.createCipheriv(this.options.cryptMode, <Buffer>(await this.genKey(<PBKInput>key, id)), iv);
 		const payload = await this._process(cipher, _data);
 
-		const packet = {
+		const packet: AesCryptPacket = {
 			version   : this.options.version,
 			useDataCoder,
 			id,
@@ -112,157 +162,199 @@ export class AesCrypt {
 			payload
 		};
 
-		return this.serializer.serialize(packet);
+		return this.serializer.serialize<AesCryptPacket>(packet);
 	}
 
-	async slicePublicData<T>(data: Buffer): Promise<T | null> {
+	async slicePublicData<T>(data: Buffer): Promise<T | object | null> {
 		if (!Buffer.isBuffer(data)) return null;
 		try {
-			const packet = this.serializer.deserialize(data, ['version', 'useDataCoder', 'id', 'publicData', 'iv', 'payload']);
-			return this.coder ? this.coder.decode(packet.publicData) : packet.publicData;
+			const packet = this.serializer.deserialize<AesCryptPacket>(data);
+			return packet.publicData
+			       ? this.coder && Buffer.isBuffer(packet.publicData)
+			         ? this.coder.decode(packet.publicData)
+			         : packet.publicData
+			       : null;
 		} catch (e) {
 			return null;
 		}
 	}
 
-	async decrypt(key: PBKInput | Function, data: Buffer, returnExtended = false) {
-		if (!Buffer.isBuffer(data)) return null;
-		const packet = this.serializer.deserialize(data, ['version', 'useDataCoder', 'id', 'publicData', 'iv', 'payload']);
+	async decrypt<PayloadType, PublicDataType = null>(key: PBKInput | Function, data: Buffer, returnExtended = false): Promise<AesCryptDecryptResult<PayloadType, PublicDataType> | PayloadType> {
+		if (!Buffer.isBuffer(data)) {
+			throw new Error('Input data is not Buffer');
+		}
 
-		let id, iv, publicData;
-		let payload: Buffer;
+		const packet = this.serializer.deserialize<AesCryptPacket>(data);
+
+		let id, iv;
+		let publicData: PublicDataType;
+		let outPayload: PayloadType;
 
 		try {
-			publicData = packet.useDataCoder && this.coder ? this.coder.decode(packet.publicData) : packet.publicData;
+			publicData = (packet.useDataCoder && this.coder && Buffer.isBuffer(packet.publicData)
+			              ? this.coder.decode<PublicDataType>(packet.publicData)
+			              : packet.publicData) as PublicDataType;
 			key = typeof key === 'function' ? await key(publicData) : key;
+
 			const decipher = crypto.createDecipheriv(this.options.cryptMode, <Buffer>(await this.genKey(<PBKInput>key, packet.id)), packet.iv);
-			payload = await this._process(decipher, packet.payload);
-			payload = packet.useDataCoder && this.coder ? this.coder.decode(payload) : payload;
+
+			const rawPayload = await this._process(decipher, packet.payload);
+			outPayload = (packet.useDataCoder && this.coder ? this.coder.decode<PayloadType>(rawPayload) : rawPayload) as PayloadType;
+
 			id = packet.id;
 			iv = packet.iv;
 		} catch (e) {
-			return null;
+			throw new Error('Cant decrypt message');
 		}
 
-		return returnExtended ? {id, iv, publicData, payload} : payload;
+		return returnExtended ? {
+			id,
+			iv,
+			publicData,
+			payload: outPayload
+		} : outPayload;
 	}
 }
 
-export type ECDH_KeyPair = {
+export type ECDHKeyPair = {
 	privKey: string,
 	pubKey: string
 }
 
-export class ECDH_Key {
+interface ECDHKeyPacket {
+	version: number,
+	curve: string,
+	data: Buffer,
+	isPrivate: string
+}
+
+const ECDHKeyPacketSchema: string[] = ['version', 'curve', 'data', 'isPrivate'];
+
+export class ECDHKey {
 	ser: Serializer;
-	VERSION: Number = 1;
-	CURVE: string = 'ed25519';
+	version: number = 2;
+	curve: string;
 	ec: EC;
 
-	constructor() {
+	constructor(curve = 'ed25519') {
+		this.curve = curve;
+
 		this.ser = new Serializer();
-		this.ec = new EC(this.CURVE as string);
+		this.ser.registerSchema(1, ECDHKeyPacketSchema);
+
+		this.ec = new EC(this.curve);
 	}
 
 	private hexToB62(hex: string, isPrivate = false) {
 		hex = !(hex.length % 2) ? hex : '0' + hex;
+
 		const out = this.ser.serialize({
-			VERSION: this.VERSION,
-			CURVE  : this.CURVE,
+			version: this.version,
+			curve  : this.curve,
 			data   : Buffer.from(hex, 'hex'),
 			isPrivate
 		});
 
-		return cryptTools.base62Encode(out as Buffer);
+		return CryptTools.base62Encode(out);
 	}
 
-	private b62PrivToHex(b62str: string) {
-		const buffer = cryptTools.base62Decode(b62str, true);
-		let parsed;
+	private b62PrivToHex(b62str: string): string {
+		const buffer = CryptTools.base62Decode(b62str, true) as Buffer;
+		let parsed: ECDHKeyPacket;
+
 		try {
-			parsed = this.ser.deserialize(buffer as Buffer, ['VERSION', 'CURVE', 'data', 'isPrivate']);
+			parsed = this.ser.deserialize<ECDHKeyPacket>(buffer);
 		} catch (e) {
-			console.error('Error, wrong private key format');
-			process.exit();
+			throw new Error('Error, wrong private key format');
 		}
 
 		if (!parsed.isPrivate) {
-			console.error('Error, not private key');
-			process.exit();
+			throw new Error('Error, not private key');
 		}
 
 		return parsed.data.toString('hex');
 	}
 
-	generate(): ECDH_KeyPair {
+	generate(): ECDHKeyPair {
 		const key = this.ec.genKeyPair();
 		const privKey = this.hexToB62(key.getPrivate().toString('hex'), true);
 		const pubKey = this.hexToB62(key.getPublic().encode('hex', false));
 
-		return {privKey, pubKey};
+		return {
+			privKey,
+			pubKey
+		};
 	}
 
-	static generate(): ECDH_KeyPair {
-		return (new ECDH_Key()).generate();
+	static generate(): ECDHKeyPair {
+		return (new ECDHKey()).generate();
 	}
 
-	getPublicFromPrivate(privKey: string): ECDH_KeyPair {
+	getPublicFromPrivate(privKey: string): ECDHKeyPair {
 		const keyPair = this.ec.keyFromPrivate(this.b62PrivToHex(privKey), 'hex');
 		const pubKey = this.hexToB62(keyPair.getPublic().encode('hex', false));
 
-		return {privKey, pubKey};
+		return {
+			privKey,
+			pubKey
+		};
 	}
 
-	static getPublicFromPrivate(privKey: string): ECDH_KeyPair {
-		return (new ECDH_Key()).getPublicFromPrivate(privKey);
+	static getPublicFromPrivate(privKey: string): ECDHKeyPair {
+		return (new ECDHKey()).getPublicFromPrivate(privKey);
 	}
 }
 
-export class ECDH_KeyDerivation {
+export type ECDHDerivationKeyPair = {
+	ourPrivate: string | Buffer,
+	theirPublic: string | Buffer
+}
+
+export class ECDHKeyDerivation {
 	private serializer: Serializer;
 	keyFormatVersion: number;
-	ec: EC | boolean;
-	curve: any;
+	ec: EC;
 	ourKey: EC.KeyPair;
 	theirKey: EC.KeyPair;
-	sharedKey: Buffer | boolean;
+	curve: string;
+	sharedKey: Buffer | null;
 
-	static createInstance(keyPair: ECDH_KeyPair) {
-		return new ECDH_KeyDerivation(keyPair.privKey, keyPair.pubKey);
+	static createInstance(keyPair: ECDHDerivationKeyPair, curve = 'ed25519') {
+		return new ECDHKeyDerivation(keyPair.ourPrivate, keyPair.theirPublic, curve);
 	}
 
-	constructor(ourPrivate: string | Buffer, theirPublic: string | Buffer) {
-		this.keyFormatVersion = 1;
+	constructor(ourPrivate: string | Buffer, theirPublic: string | Buffer, curve = 'ed25519') {
+		this.keyFormatVersion = 2;
 
-		this.ec = false;
-		this.curve = false;
+		this.curve = curve;
+		this.ec = new EC(this.curve);
 
 		this.serializer = new Serializer();
+		this.serializer.registerSchema(1, ECDHKeyPacketSchema);
 
 		const ourKeyHex = this._decodePayload(ourPrivate, true);
-		// @ts-ignore
-		this.ourKey = this.ec?.keyFromPrivate(ourKeyHex, 'hex');
-		// @ts-ignore
-		this.theirKey = this.ec?.keyFromPublic(this._decodePayload(theirPublic), 'hex');
 
-		this.sharedKey = false;
+		this.ourKey = this.ec.keyFromPrivate(ourKeyHex, 'hex');
+		this.theirKey = this.ec.keyFromPublic(this._decodePayload(theirPublic), 'hex');
+
+		this.sharedKey = null;
 	}
 
 	private _decodePayload(b62str: string | Buffer, asPrivate = false): string {
 		const _b62str = Buffer.isBuffer(b62str) ? Buffer.from(b62str).toString() : b62str;
 
-		let buffer = cryptTools.base62Decode(_b62str, true);
+		let buffer = CryptTools.base62Decode(_b62str, true) as Buffer;
 
-		let parsed;
+		let parsed: ECDHKeyPacket;
 		try {
-			// @ts-ignore
-			parsed = this.serializer.deserialize(buffer, ['ver', 'curve', 'data', 'isPrivate']);
+			parsed = this.serializer.deserialize<ECDHKeyPacket>(buffer);
 		} catch (e) {
 			throw new Error('Wrong private key format');
 		}
 
-		if (this.keyFormatVersion !== parsed.ver) {
-			throw new Error(`Wrong key version, has ${parsed.ver} must be ${this.keyFormatVersion}`);
+		if (this.keyFormatVersion !== parsed.version) {
+			const err = `Wrong key version, has ${parsed.version} must be ${this.keyFormatVersion}`;
+			throw new Error(err);
 		}
 
 		if (asPrivate && !parsed.isPrivate) {
@@ -286,9 +378,18 @@ export class ECDH_KeyDerivation {
 	}
 
 	getSharedKey(): Buffer {
-		if (this.sharedKey) return <Buffer>this.sharedKey;
-		return this.sharedKey = this.ourKey.derive(this.theirKey.getPublic()).toBuffer('be');
+		if (this.sharedKey) return this.sharedKey;
+
+		return this.ourKey.derive(this.theirKey.getPublic()).toBuffer('be');
 	}
 }
 
-export default {Serializer, DataCoder, coderTools, nTools, cryptTools, ECDH_Key, ECDH_KeyDerivation};
+export default {
+	Serializer,
+	DataCoder,
+	CoderTools,
+	oTools,
+	CryptTools,
+	ECDHKey,
+	ECDHKeyDerivation
+};
