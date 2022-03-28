@@ -7,7 +7,7 @@
 		"email": "vasiliy@isaichkin.ru"
 	},
 	"repository"     : "https://github.com/osmiumjs/crypt",
-	"version"        : "0.5.1",
+	"version"        : "0.5.2",
 	"scripts"        : {
 		"compile"       : "tsc && webpack",
 		"compress"      : "terser --compress --ecma 2015 -o ./dist/index.min.js -- ./dist/index.min.js",
@@ -21,8 +21,9 @@
 	"main"           : "./dist/index.js",
 	"types"          : "./defs/index.d.ts",
 	"dependencies"   : {
-		"elliptic"     : "~6.5.4",
-		"@osmium/coder": "~0.6.2"
+		"@osmium/coder" : "~0.6.2",
+		"@osmium/events": "~0.5.0",
+		"elliptic"      : "~6.5.4"
 	},
 	"devDependencies": {
 		"@types/elliptic"  : "~6.4.14",
