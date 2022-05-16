@@ -7,7 +7,7 @@
 		"email": "vasiliy@isaichkin.ru"
 	},
 	"repository"     : "https://github.com/osmiumjs/crypt",
-	"version"        : "0.5.2",
+	"version"        : "0.6.0",
 	"scripts"        : {
 		"compile"       : "tsc && webpack",
 		"compress"      : "terser --compress --ecma 2015 -o ./dist/index.min.js -- ./dist/index.min.js",
@@ -21,25 +21,25 @@
 	"main"           : "./dist/index.js",
 	"types"          : "./defs/index.d.ts",
 	"dependencies"   : {
-		"@osmium/coder" : "~0.6.2",
-		"@osmium/events": "~0.5.0",
-		"elliptic"      : "~6.5.4"
+		"@osmium/coder": "~0.6.6",
+		"@osmium/tools": "~0.6.5",
+		"elliptic"     : "~6.5.4"
 	},
 	"devDependencies": {
 		"@types/elliptic"  : "~6.4.14",
-		"@types/mocha"     : "~9.1.0",
-		"@types/node"      : "~16.11.26",
+		"@types/mocha"     : "~9.1.1",
+		"@types/node"      : "~16.11.35",
 		"buffer"           : "~6.0.3",
 		"chai"             : "^4.3.6",
 		"crypto-browserify": "~3.12.0",
-		"mocha"            : "~9.2.2",
+		"mocha"            : "~10.0.0",
 		"rimraf"           : "~3.0.2",
 		"stream-browserify": "~3.0.0",
-		"terser"           : "~5.12.1",
-		"ts-loader"        : "~9.2.8",
-		"typedoc"          : "~0.22.13",
-		"typescript"       : "~4.6.3",
-		"webpack"          : "~5.70.0",
+		"terser"           : "~5.13.1",
+		"ts-loader"        : "~9.3.0",
+		"typedoc"          : "~0.22.15",
+		"typescript"       : "~4.6.4",
+		"webpack"          : "~5.72.1",
 		"webpack-cli"      : "~4.9.2"
 	}
 }

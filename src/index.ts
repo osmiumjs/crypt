@@ -1,9 +1,9 @@
 import * as crypto from 'crypto';
 import {ec as EC} from 'elliptic';
 import {Transform} from 'stream';
-
-import {Serializer, DataCoder, CoderTools, oTools} from '@osmium/coder';
 import {BinaryToTextEncoding} from 'crypto';
+
+import {Serializer, DataCoder, CoderTools} from '@osmium/coder';
 
 import TypedArray = NodeJS.TypedArray;
 
@@ -33,8 +33,6 @@ export interface AESCryptOptionsArgs {
 	version?: number;
 }
 
-export {Serializer, DataCoder, CoderTools, oTools};
-
 export class CryptTools extends CoderTools {
 	static crypto = crypto;
 
@@ -55,9 +53,9 @@ export class CryptTools extends CoderTools {
 
 	static hash(what: any, mode = 'sha256', encoding: crypto.Encoding = 'utf8', digest: BinaryToTextEncoding = 'hex'): string {
 		return crypto
-		.createHash(mode)
-		.update(what, encoding)
-		.digest(digest);
+			.createHash(mode)
+			.update(what, encoding)
+			.digest(digest);
 	}
 
 	static isHash(what: any, type = 'sha256'): boolean {
@@ -221,7 +219,7 @@ export type ECDHKeyPair = {
 	pubKey: string
 }
 
-interface ECDHKeyPacket {
+export interface ECDHKeyPacket {
 	version: number,
 	curve: string,
 	data: Buffer,
@@ -383,13 +381,3 @@ export class ECDHKeyDerivation {
 		return this.ourKey.derive(this.theirKey.getPublic()).toBuffer('be');
 	}
 }
-
-export default {
-	Serializer,
-	DataCoder,
-	CoderTools,
-	oTools,
-	CryptTools,
-	ECDHKey,
-	ECDHKeyDerivation
-};

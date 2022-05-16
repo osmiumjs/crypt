@@ -1,8 +1,8 @@
 /// <reference types="node" />
 import * as crypto from 'crypto';
 import { ec as EC } from 'elliptic';
-import { Serializer, DataCoder, CoderTools, oTools } from '@osmium/coder';
 import { BinaryToTextEncoding } from 'crypto';
+import { Serializer, DataCoder, CoderTools } from '@osmium/coder';
 import TypedArray = NodeJS.TypedArray;
 export declare type PBKInput = string | Buffer | TypedArray | DataView;
 export interface AESCryptOptions {
@@ -27,7 +27,6 @@ export interface AESCryptOptionsArgs {
     customSerializer?: Serializer | null;
     version?: number;
 }
-export { Serializer, DataCoder, CoderTools, oTools };
 export declare class CryptTools extends CoderTools {
     static crypto: typeof crypto;
     static pbkdf2(password: PBKInput, salt?: PBKInput, iterations?: number, keyLength?: number, digest?: string): Promise<boolean | Buffer>;
@@ -65,6 +64,12 @@ export declare type ECDHKeyPair = {
     privKey: string;
     pubKey: string;
 };
+export interface ECDHKeyPacket {
+    version: number;
+    curve: string;
+    data: Buffer;
+    isPrivate: string;
+}
 export declare class ECDHKey {
     ser: Serializer;
     version: number;
@@ -95,13 +100,3 @@ export declare class ECDHKeyDerivation {
     private _decodePayload;
     getSharedKey(): Buffer;
 }
-declare const _default: {
-    Serializer: typeof Serializer;
-    DataCoder: typeof DataCoder;
-    CoderTools: typeof CoderTools;
-    oTools: typeof oTools;
-    CryptTools: typeof CryptTools;
-    ECDHKey: typeof ECDHKey;
-    ECDHKeyDerivation: typeof ECDHKeyDerivation;
-};
-export default _default;

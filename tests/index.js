@@ -1,9 +1,9 @@
 const {describe, it} = require('mocha');
 const {expect} = require('chai');
-
+const oTools = require('@osmium/tools');
 
 function doTests(coderName, title) {
-	const {oTools, AesCrypt, ECDHKeyDerivation, ECDHKey} = require(`../dist/${coderName}`);
+	const {AesCrypt, ECDHKeyDerivation, ECDHKey} = require(`../dist/${coderName}`);
 
 	async function encryptDecryptTest(value, key, options = {}, id = false, publicData = false, useDataCoder) {
 		const aes = new AesCrypt(options);
@@ -16,19 +16,19 @@ function doTests(coderName, title) {
 	const publicData = {test: 'ok'};
 
 	const keyOne = {
-		ourPrivate : 'xdArwxSpa4yi5RTEVXVxfdZg0KeAv0wia3l7bhfoLogu6iyjYzs3y5jrzKM1rGpQ6MafKljvt',
-		theirPublic: '2afdRSsysuKKBspudsjvrxZMPXC1d0WKsVnxenOF50bqjr7Tn8NrKRY7W1zYqbmONu6J79GOjrFWvUaHCezZWH1RQsnC1r9nfP886vFP2qiyuIGsrMOrdw'
+		ourPrivate : 'xbWTGMloxaCNbseq1pu271JumCEWEuCTmLGrVXBPGBATeSax0qu0fPu0ZSpksUstBFxnugslY',
+		theirPublic: '2aiuyORVnGLKVzkuFBd59uEg1ToSVEShA6oDQ0Cp1gwYEyRWzfpLqZc5O96iCLk8v6lUFafrDYJIT2zdw9ppwz5wOwsWWi06zcAmn03CTRnFaTyRyzzGGm'
 	};
 
 	const keyTwo = {
-		ourPrivate : 'xbUvZ8nC06I0lIr0ZIWD6h8OLosOuRtD5Savvxj6fEsQfZWFDabI2FTZ5wKXJI6Oarn66o4vh',
-		theirPublic: '2acrrbVGLqcdKpNsAV4TTsJ2msXaNO1tQpSdICpfDPxLJ54idcmrF4tCAiYHQ1Q9uFyLNJfQ1xBdStVnEKqFFuUXrMtCqhPy2jqUZcIvrnKu6PpXJfchdE'
+		ourPrivate : 'xedrVfZxTnO8LBnCt6kBITlE8uopkcCR7OEdwlMfIZutv6QZIDOBWqsJX1QcqvSY2m6jYOuWK',
+		theirPublic: '2ahUbXXqpHwhq3CHlRBPz3D5cLFU0FrsE9BSkKGeZ2itY275ASZRq8uZT3hhiRL8xDMJjHoY804Hisj3fBLgKlpETfSgwnLmurmBH2gJVM4XXnyW7OwzQu'
 	};
 
 	describe(`==== Test for "${title}" version ====`, function () {
 		describe('ECDH key derivation', function () {
 			it('Key derivation', async function () {
-				const sharedKey = '25c29f1f9cb8d1ba414a22f7d14b3194cf6f7feb9cb4897a4ea08f904a4dacdb';
+				const sharedKey = '6bb75f65c2c8b3af54c437f92fe77f0b36100a5bba1b3cece55c5ad5e1e89bc6';
 				const [dKeyOne, dKeyTwo] = [keyOne, keyTwo].map(key => ECDHKeyDerivation.createInstance(key).getSharedKey().toString('hex'));
 
 				expect(dKeyOne).to.eql(dKeyTwo);
