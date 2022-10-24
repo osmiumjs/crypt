@@ -1,9 +1,8 @@
 const {describe, it} = require('mocha');
 const {expect} = require('chai');
-const oTools = require('@osmium/tools');
 
 function doTests(coderName, title) {
-	const {AesCrypt, ECDHKeyDerivation, ECDHKey} = require(`../dist/${coderName}`);
+	const {AesCrypt, ECDHKeyDerivation, ECDHKey, CryptTools} = require(`../dist/${coderName}`);
 
 	async function encryptDecryptTest(value, key, options = {}, id = false, publicData = false, useDataCoder) {
 		const aes = new AesCrypt(options);
@@ -12,7 +11,7 @@ function doTests(coderName, title) {
 	}
 
 	const sample = {key1: true, key2: 291, key3: 'hello+1', key4: [{a: 1, b: -20, c: 'hello'}, null]};
-	const id = oTools.UID('ID-');
+	const id = CryptTools.UID('ID-');
 	const publicData = {test: 'ok'};
 
 	const keyOne = {
@@ -42,19 +41,19 @@ function doTests(coderName, title) {
 
 		describe('AES encrypting', function () {
 			it('Simple encrypt test', async function () {
-				const result = await encryptDecryptTest(sample, oTools.UID());
+				const result = await encryptDecryptTest(sample, CryptTools.UID());
 				expect(result.payload).to.eql(sample);
 			});
 
 			it('Full encrypt test - default', async function () {
-				const result = await encryptDecryptTest(sample, oTools.UID(), {}, id, publicData);
+				const result = await encryptDecryptTest(sample, CryptTools.UID(), {}, id, publicData);
 				expect(result.payload).to.eql(sample);
 				expect(result.id).to.eql(id);
 				expect(result.publicData).to.eql(publicData);
 			});
 
 			it('Full encrypt test - modifed', async function () {
-				const result = await encryptDecryptTest(sample, oTools.UID(), {keyMode: 'sha1', keySalt: ''}, id, publicData);
+				const result = await encryptDecryptTest(sample, CryptTools.UID(), {keyMode: 'sha1', keySalt: ''}, id, publicData);
 				expect(result.payload).to.eql(sample);
 				expect(result.id).to.eql(id);
 				expect(result.publicData).to.eql(publicData);

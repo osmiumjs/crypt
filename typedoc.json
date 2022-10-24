@@ -1,6 +1,0 @@
-{
-	"entryPoints": ["./src/index.ts"],
-	"name"       : "@osmium/crypt",
-	"out"        : "docs",
-	"includes"   : "./mds/"
-}

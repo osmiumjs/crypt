@@ -1,6 +1,6 @@
-import * as crypto from 'crypto';
-import {ec as EC} from 'elliptic';
-import {Transform} from 'stream';
+import * as crypto            from 'crypto';
+import {ec as EC}             from 'elliptic';
+import {Transform}            from 'stream';
 import {BinaryToTextEncoding} from 'crypto';
 
 import {Serializer, DataCoder, CoderTools} from '@osmium/coder';
@@ -35,6 +35,24 @@ export interface AESCryptOptionsArgs {
 
 export class CryptTools extends CoderTools {
 	static crypto = crypto;
+
+	/** Like Math.random() */
+	static random = () => {
+		return crypto.getRandomValues(new Uint32Array(1))[0] / (0xffffffff + 1);
+	};
+
+	/** GUIDv4 string */
+	static GUID(mask: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'): string {
+		return mask.replace(/[xy]/g, (c) => {
+			let r = CryptTools.random() * 16 | 0;
+			return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+		});
+	}
+
+	/** Generate 128bit unique id */
+	static UID(prefix: string = '', mask: string = 'xxxxxxxxxxxxxxxxxx-xxxxxx') {
+		return `${prefix}${mask}`.replace(/[x]/g, () => (CryptTools.random() * 36 | 0).toString(36)[CryptTools.random() >= 0.5 ? 'toUpperCase' : 'toLowerCase']());
+	}
 
 	static async pbkdf2(password: PBKInput, salt: PBKInput = 'vWiq8rHuWKur6bsnTa0aAHugsc0stJS5', iterations = 1, keyLength = 32, digest = 'sha512'): Promise<boolean | Buffer> {
 		return new Promise(resolve =>
@@ -160,18 +178,19 @@ export class AesCrypt {
 			payload
 		};
 
-		return this.serializer.serialize<AesCryptPacket>(packet);
+		return this.serializer.serialize<any>(packet);
 	}
 
 	async slicePublicData<T>(data: Buffer): Promise<T | object | null> {
 		if (!Buffer.isBuffer(data)) return null;
 		try {
-			const packet = this.serializer.deserialize<AesCryptPacket>(data);
-			return packet.publicData
-			       ? this.coder && Buffer.isBuffer(packet.publicData)
-			         ? this.coder.decode(packet.publicData)
-			         : packet.publicData
-			       : null;
+			const {publicData} = this.serializer.deserialize<AesCryptPacket>(data);
+			if (!publicData) return null;
+
+			return this.coder && Buffer.isBuffer(publicData)
+			       ? this.coder.decode(publicData)
+			       : publicData;
+
 		} catch (e) {
 			return null;
 		}

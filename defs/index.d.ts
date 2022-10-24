@@ -1,4 +1,6 @@
 /// <reference types="node" />
+/// <reference types="node" />
+/// <reference types="node" />
 import * as crypto from 'crypto';
 import { ec as EC } from 'elliptic';
 import { BinaryToTextEncoding } from 'crypto';
@@ -29,6 +31,12 @@ export interface AESCryptOptionsArgs {
 }
 export declare class CryptTools extends CoderTools {
     static crypto: typeof crypto;
+    /** Like Math.random() */
+    static random: () => number;
+    /** GUIDv4 string */
+    static GUID(mask?: string): string;
+    /** Generate 128bit unique id */
+    static UID(prefix?: string, mask?: string): string;
     static pbkdf2(password: PBKInput, salt?: PBKInput, iterations?: number, keyLength?: number, digest?: string): Promise<boolean | Buffer>;
     static pbkdf2b66(password: PBKInput, salt?: PBKInput, iterations?: number, keyLength?: number, digest?: string): Promise<string | boolean>;
     static hash(what: any, mode?: string, encoding?: crypto.Encoding, digest?: BinaryToTextEncoding): string;
