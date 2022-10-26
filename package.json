@@ -7,24 +7,24 @@
 		"email": "vasiliy@isaichkin.ru"
 	},
 	"repository"     : "https://github.com/osmiumjs/crypt",
-	"version"        : "0.7.0",
+	"version"        : "0.7.1",
 	"scripts"        : {
 		"compile"       : "tsc && webpack",
 		"compress"      : "terser --compress --ecma 2015 -o ./dist/index.min.js -- ./dist/index.min.js",
 		"test"          : "mocha tests",
 		"clean"         : "rimraf dist defs",
-		"clean:full"    : "npm run clean && rimraf node_modules",
-		"build"         : "npm run clean && npm run compile && npm run test",
-		"prepublishOnly": "npm run build"
+		"clean:full"    : "yarn run clean && rimraf node_modules",
+		"build"         : "yarn run clean && yarn run compile && yarn run test",
+		"prepublishOnly": "yarn run build"
 	},
 	"main"           : "./dist/index.js",
 	"types"          : "./defs/index.d.ts",
 	"dependencies"   : {
-		"@osmium/coder": "0.7.1",
-		"elliptic"     : "~6.5.4"
+		"@osmium/coder"  : "0.7.1",
+		"@types/elliptic": "~6.4.14",
+		"elliptic"       : "~6.5.4"
 	},
 	"devDependencies": {
-		"@types/elliptic"  : "~6.4.14",
 		"@types/mocha"     : "~10.0.0",
 		"@types/node"      : "~18.11.4",
 		"buffer"           : "~6.0.3",

@@ -18,7 +18,7 @@
 		"resolveJsonModule": true,
 		"sourceMap"        : true,
 		"strict"           : true,
-		"types"            : ["mocha", "node"]
+		"types"            : ["mocha", "node", "elliptic"]
 	},
 	"include"        : [
 		"./src/**/*"
